@@ -1,6 +1,6 @@
 // src/components/CreateBoard.jsx
-import React, { useState } from "react";
-import { FiUserPlus, FiX } from "react-icons/fi";
+import React, { useState, useEffect } from "react";
+import { FiUserPlus, FiX, FiLoader } from "react-icons/fi";
 import logo from "../assets/logo.png";
 import { createBoard } from "../api/api.js";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +16,15 @@ const CreateBoard = () => {
 
   const navigate = useNavigate();
   const { userData } = useSelector((state) => state.user);
-  const ownerId = userData?._id;
+
+  // Check if userData is loaded
+  useEffect(() => {
+    if (!userData) {
+      console.log("User data not loaded yet...");
+    } else {
+      console.log("User data loaded:", userData);
+    }
+  }, [userData]);
 
   // Add a collaborator
   const handleAddCollaborator = () => {
@@ -34,6 +42,14 @@ const CreateBoard = () => {
   // Create Board with empty data
   const handleCreate = async (e) => {
     e.preventDefault();
+
+    // Check if user data is loaded
+    if (!userData || !userData._id) {
+      setError("User data not loaded. Please refresh the page and try again.");
+      console.error("User data is missing:", userData);
+      return;
+    }
+
     if (!boardName) {
       setError("Board name is required!");
       return;
@@ -45,7 +61,7 @@ const CreateBoard = () => {
     try {
       const boardData = {
         name: boardName,
-        owner: ownerId,
+        owner: userData._id,
         collaborators,
         description,
         data: {
@@ -59,10 +75,9 @@ const CreateBoard = () => {
       const res = await createBoard(boardData);
       console.log("Board created response:", res);
 
-      // Extract the board ID from response - try multiple possible locations
+      // Extract the board ID from response
       const newBoardId = res._id || res.data?._id || res.id;
       console.log("Extracted board ID:", newBoardId);
-      console.log("Full response object:", JSON.stringify(res, null, 2));
 
       if (!newBoardId) {
         console.error("No board ID found in response:", res);
@@ -75,7 +90,9 @@ const CreateBoard = () => {
       navigate(navigationPath);
     } catch (err) {
       console.error("Error creating board:", err);
-      setError(err.response?.data?.msg || "Failed to create board");
+      setError(
+        err.response?.data?.msg || err.message || "Failed to create board"
+      );
     } finally {
       setLoading(false);
     }
@@ -83,6 +100,18 @@ const CreateBoard = () => {
 
   // Dark neon particles
   const particles = Array.from({ length: 25 }, (_, i) => i);
+
+  // Show loading state while user data is being fetched
+  if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black">
+        <div className="text-center">
+          <FiLoader className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading user data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black text-gray-100">
@@ -112,7 +141,7 @@ const CreateBoard = () => {
 
         <form onSubmit={handleCreate} className="space-y-6">
           {error && (
-            <div className="p-2 bg-red-800/70 border border-red-700 text-red-200 text-sm rounded">
+            <div className="p-3 bg-red-800/70 border border-red-700 text-red-200 text-sm rounded">
               {error}
             </div>
           )}
@@ -188,9 +217,16 @@ const CreateBoard = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 rounded text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-600 shadow-[0_0_15px_rgba(128,0,255,0.7)] transition-all duration-200"
+            className="w-full py-2 rounded text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-600 shadow-[0_0_15px_rgba(128,0,255,0.7)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? "Creating..." : "Create Board"}
+            {loading ? (
+              <>
+                <FiLoader className="w-4 h-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Board"
+            )}
           </button>
         </form>
       </div>

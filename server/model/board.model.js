@@ -1,6 +1,4 @@
 // backend/model/board.model.js
-// Make sure your schema matches this structure
-
 import mongoose from "mongoose";
 
 const boardSchema = new mongoose.Schema(
@@ -13,6 +11,7 @@ const boardSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      // DO NOT put unique: true here - this caused your issue!
     },
     collaborators: [
       {
@@ -37,6 +36,10 @@ const boardSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Optional: If you want to prevent duplicate board names per user
+// Uncomment this line:
+// boardSchema.index({ name: 1, owner: 1 }, { unique: true });
 
 const Board = mongoose.model("Board", boardSchema);
 

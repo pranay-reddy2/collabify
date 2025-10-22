@@ -1,6 +1,6 @@
 // src/pages/BoardPage.jsx
 import React, { useState, useEffect, useRef, memo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { ReactSketchCanvas } from "react-sketch-canvas";
 // --- Redux Imports ---
@@ -28,6 +28,9 @@ import {
   FiPenTool,
   FiRewind,
   FiMove,
+  FiHome,
+  FiCheckCircle,
+  FiAlertCircle,
 } from "react-icons/fi";
 import { BsEraser } from "react-icons/bs";
 
@@ -243,14 +246,11 @@ const ImageBlock = memo(
   }
 );
 
-// --- Main BoardPage Component ---
 const BoardPage = () => {
-  const { id } = useParams(); // Changed from boardId to id to match route
+  const { id } = useParams();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  console.log("Board ID from useParams:", id);
-
-  // --- Select state from Redux ---
   const {
     boardName,
     content,
@@ -262,72 +262,61 @@ const BoardPage = () => {
     isErasing,
   } = useSelector((state) => state.board);
 
-  // Local state
   const [placingBlock, setPlacingBlock] = useState(null);
   const [clickCoords, setClickCoords] = useState(null);
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    isError: false,
+  });
 
   const fileInputRef = useRef(null);
   const sketchCanvas = useRef(null);
+  const boardContentRef = useRef(null);
 
-  // Fetch board data on mount
   useEffect(() => {
-    if (!id) {
-      console.error("No board ID found in URL");
-      return;
-    }
-
-    console.log("Fetching board with ID:", id);
+    if (!id) return;
     dispatch(setCurrentBoardId(id));
     dispatch(fetchBoardById(id))
       .unwrap()
       .then((fetchedData) => {
-        console.log("Board fetched successfully:", fetchedData);
-        // Load drawing data into canvas
         if (
           fetchedData.data?.drawing?.length > 0 &&
           sketchCanvas.current?.loadPaths
         ) {
-          setTimeout(() => {
-            if (sketchCanvas.current?.loadPaths) {
-              console.log("Loading drawing paths:", fetchedData.data.drawing);
-              sketchCanvas.current.loadPaths(fetchedData.data.drawing);
-            }
-          }, 100);
+          setTimeout(
+            () => sketchCanvas.current.loadPaths(fetchedData.data.drawing),
+            100
+          );
         }
       })
-      .catch((fetchError) => {
-        console.error("Failed to fetch board:", fetchError);
-      });
+      .catch(console.error);
   }, [id, dispatch]);
 
-  // --- Handlers ---
   const handleAddBlock = (type, value = "", x, y) => {
     const payload = {
       type,
       value,
       x,
       y,
-      width: type === "text" ? 200 : 200,
+      width: 200,
       height: type === "text" ? "auto" : undefined,
     };
     dispatch(addBlock(payload));
   };
 
-  const handleUpdateValue = (id, value) => {
+  const handleUpdateValue = (id, value) =>
     dispatch(updateBlockValue({ id, value }));
+  const handleDeleteBlock = (id) => dispatch(deleteBlock(id));
+  const handleUpdatePosition = (id, viewportPoint) => {
+    if (!boardContentRef.current) return;
+    const rect = boardContentRef.current.getBoundingClientRect();
+    const x = viewportPoint.x - rect.left;
+    const y = viewportPoint.y - rect.top;
+    dispatch(updateBlockPosition({ id, x, y }));
   };
-
-  const handleDeleteBlock = (id) => {
-    dispatch(deleteBlock(id));
-  };
-
-  const handleUpdatePosition = (id, point) => {
-    dispatch(updateBlockPosition({ id, x: point.x, y: point.y }));
-  };
-
-  const handleUpdateSize = (id, size) => {
+  const handleUpdateSize = (id, size) =>
     dispatch(updateBlockSize({ id, width: size.width, height: size.height }));
-  };
 
   const triggerImageUpload = () => {
     if (fileInputRef.current) {
@@ -340,22 +329,17 @@ const BoardPage = () => {
     const file = e.target.files?.[0];
     if (!file || !clickCoords) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = () =>
       handleAddBlock("image", reader.result, clickCoords.x, clickCoords.y);
-    };
     reader.readAsDataURL(file);
     setClickCoords(null);
   };
 
   const handleBoardClick = (e) => {
-    if (
-      placingBlock &&
-      !drawMode &&
-      (e.target.id === "board-content-area" ||
-        e.target === sketchCanvas.current?.canvas)
-    ) {
-      const x = e.clientX;
-      const y = e.clientY;
+    if (placingBlock && !drawMode && boardContentRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
       if (placingBlock === "text") handleAddBlock("text", "", x - 10, y - 10);
       if (placingBlock === "image") {
         setClickCoords({ x: x - 100, y: y - 50 });
@@ -368,52 +352,43 @@ const BoardPage = () => {
   const handleSaveBoard = async () => {
     if (!sketchCanvas.current || !id) return;
     try {
-      const currentDrawingData = await sketchCanvas.current.exportPaths();
-      console.log(
-        "Saving board - blocks:",
-        content.length,
-        "drawing paths:",
-        currentDrawingData.length
-      );
-
+      const drawingData = await sketchCanvas.current.exportPaths();
       await dispatch(
-        saveCurrentBoard({
-          boardId: id, // Use id from params
-          blocks: content,
-          drawing: currentDrawingData,
-        })
+        saveCurrentBoard({ boardId: id, blocks: content, drawing: drawingData })
       ).unwrap();
-
-      alert("Board saved!");
-    } catch (saveError) {
-      console.error("Failed to save board:", saveError);
-      alert(`Failed to save board: ${saveError}`);
+      setToast({ show: true, message: "Board Saved!", isError: false });
+      setTimeout(
+        () => setToast({ show: false, message: "", isError: false }),
+        2000
+      );
+    } catch (err) {
+      console.error(err);
+      setToast({ show: true, message: `Save Failed: ${err}`, isError: true });
+      setTimeout(
+        () => setToast({ show: false, message: "", isError: false }),
+        3000
+      );
     }
   };
 
   const handleUndoDrawing = () => sketchCanvas.current?.undo();
-
   const handleToggleEraser = () => {
     dispatch(setEraserMode(!isErasing));
     sketchCanvas.current?.eraseMode(!isErasing);
   };
-
   const handleSetPenColor = (color) => {
     dispatch(setStrokeColor(color));
-    if (sketchCanvas.current) sketchCanvas.current.eraseMode(false);
+    sketchCanvas.current?.eraseMode(false);
   };
-
   const handleToggleDrawMode = () => {
     dispatch(setDrawMode(!drawMode));
     if (drawMode) setPlacingBlock(null);
   };
-
   const handleStartPlacingBlock = (type) => {
     setPlacingBlock(type);
     if (drawMode) dispatch(setDrawMode(false));
   };
 
-  // --- Render Logic ---
   if (status === "loading" || status === "idle") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -429,7 +404,7 @@ const BoardPage = () => {
           Error loading board: {error || "Unknown Error"}
         </p>
         <button
-          onClick={() => (window.location.href = "/dashboard")}
+          onClick={() => navigate("/dashboard")}
           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500"
         >
           Back to Dashboard
@@ -439,24 +414,49 @@ const BoardPage = () => {
   }
 
   return (
-    <div
-      id="board-content-area"
-      onClick={handleBoardClick}
-      className={`min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-950 text-gray-100 ${
-        placingBlock
-          ? "cursor-crosshair"
-          : drawMode
-          ? "cursor-crosshair"
-          : "cursor-default"
-      }`}
-    >
-      {/* Background Blobs */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
+    <div className="min-h-screen relative bg-gradient-to-br from-gray-900 via-black to-gray-950 text-gray-100">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[60] flex items-center gap-3 px-5 py-3 rounded-lg shadow-lg ${
+              toast.isError
+                ? "bg-red-600 text-white"
+                : "bg-green-600 text-white"
+            }`}
+          >
+            {toast.isError ? (
+              <FiAlertCircle className="w-5 h-5" />
+            ) : (
+              <FiCheckCircle className="w-5 h-5" />
+            )}
+            <span>{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Background Blobs + Stars */}
+      <div className="absolute inset-0 z-5 pointer-events-none">
         <div className="absolute -top-1/4 -left-1/4 w-96 h-96 bg-indigo-700 rounded-full filter blur-3xl opacity-20 mix-blend-screen animate-pulse" />
         <div
           className="absolute -bottom-1/4 -right-1/4 w-96 h-96 bg-purple-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen animate-pulse"
           style={{ animationDelay: "3.8s" }}
         />
+        {Array.from({ length: 30 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-float"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDuration: `${5 + Math.random() * 10}s`,
+              animationDelay: `${Math.random() * 5}s`,
+            }}
+          />
+        ))}
       </div>
 
       {/* Drawing Canvas */}
@@ -474,12 +474,30 @@ const BoardPage = () => {
       />
 
       {/* Header */}
-      <header className="relative z-30 flex justify-between items-center px-6 md:px-12 pt-6 pointer-events-none">
-        <h1 className="text-2xl font-bold">{boardName}</h1>
+      <header className="relative z-30 flex justify-between items-center px-6 md:px-12 pt-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="p-2 bg-gray-800/50 hover:bg-gray-700/50 backdrop-blur-sm border border-gray-700 rounded-lg transition-colors group pointer-events-auto"
+            title="Back to Dashboard"
+          >
+            <FiHome className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+          </button>
+          <h1 className="text-2xl font-bold pointer-events-auto">
+            {boardName}
+          </h1>
+        </div>
       </header>
 
       {/* Board Content Area */}
-      <div className="flex-1 relative w-full h-full pt-4">
+      <div
+        id="board-content-area"
+        ref={boardContentRef}
+        onClick={handleBoardClick}
+        className={`flex-1 relative w-full h-full pt-4 z-20 ${
+          placingBlock || drawMode ? "cursor-crosshair" : "cursor-default"
+        }`}
+      >
         <AnimatePresence>
           {content.map((block) => {
             if (block.type === "text") {
@@ -606,6 +624,26 @@ const BoardPage = () => {
         accept="image/*"
         className="hidden"
       />
+
+      {/* Tailwind Custom Animations */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.3; }
+        }
+        .animate-pulse {
+          animation: pulse 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+          0% { transform: translateY(0px); opacity: 0.2; }
+          50% { transform: translateY(-20px); opacity: 0.5; }
+          100% { transform: translateY(0px); opacity: 0.2; }
+        }
+        .animate-float {
+          animation: float infinite ease-in-out;
+        }
+      `}</style>
     </div>
   );
 };

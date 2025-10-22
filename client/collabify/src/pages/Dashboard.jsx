@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -31,22 +32,39 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-black text-gray-100 relative overflow-hidden px-6 py-12">
       {/* Background Gradient */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-black via-gray-950 to-black" />
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black opacity-30" />
 
-      {/* Neon Blobs */}
-      <div className="absolute -top-1/4 -left-1/4 w-96 h-96 bg-indigo-700 rounded-full filter blur-3xl opacity-20 mix-blend-screen animate-pulse z-0" />
-      <div
-        className="absolute -bottom-1/4 -right-1/4 w-96 h-96 bg-purple-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen animate-pulse z-0"
-        style={{ animationDelay: "3.8s" }}
-      />
+        {/* Neon blobs */}
+        <div className="absolute -top-20 -left-20 w-72 h-72 bg-indigo-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen animate-pulse-slow" />
+        <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-purple-700 rounded-full filter blur-3xl opacity-10 mix-blend-screen animate-pulse-slow" />
+
+        {/* Floating particles / stars */}
+        {Array.from({ length: 30 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-float"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDuration: `${5 + Math.random() * 10}s`,
+              animationDelay: `${Math.random() * 5}s`,
+            }}
+          />
+        ))}
+      </div>
 
       {/* Dashboard Header */}
       <header className="relative z-10 flex items-center justify-between p-6 rounded-xl">
         <div>
           <h1 className="text-3xl font-extrabold text-white">My Boards</h1>
           <p className="text-gray-400 text-sm mt-1">
-            {userBoards.length} {userBoards.length === 1 ? "board" : "boards"}{" "}
-            total
+            {status === "succeeded" && (
+              <>
+                {userBoards.length}{" "}
+                {userBoards.length === 1 ? "board" : "boards"} total
+              </>
+            )}
           </p>
         </div>
       </header>
@@ -96,7 +114,7 @@ const Dashboard = () => {
                 <div
                   key={board._id}
                   onClick={() => handleBoardClick(board._id)}
-                  className="bg-gray-950/70 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl shadow-indigo-500/20 p-6 hover:scale-105 hover:border-indigo-500/50 transition-all cursor-pointer group"
+                  className="bg-gray-950/70 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl shadow-indigo-500/10 p-6 hover:scale-105 hover:border-indigo-500/50 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-indigo-400 font-semibold text-sm">
@@ -128,6 +146,26 @@ const Dashboard = () => {
 
       {/* Bottom Navbar */}
       <Navbar />
+
+      {/* Tailwind Custom Animations */}
+      <style>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.3; }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+          0% { transform: translateY(0px); opacity: 0.2; }
+          50% { transform: translateY(-20px); opacity: 0.5; }
+          100% { transform: translateY(0px); opacity: 0.2; }
+        }
+        .animate-float {
+          animation: float infinite ease-in-out;
+        }
+      `}</style>
     </div>
   );
 };
