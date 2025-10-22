@@ -1,7 +1,24 @@
-// src/redux/boardSlice.js - Update your Redux slice to match backend structure
+// src/redux/boardSlice.js - Add fetchUserBoards action
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { getBoard, updateBoard } from "../api/api";
+import { getBoard, updateBoard, getUserBoards } from "../api/api";
+
+// Fetch all user boards
+export const fetchUserBoards = createAsyncThunk(
+  "board/fetchUserBoards",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getUserBoards();
+      console.log("Fetched user boards:", response);
+      return response;
+    } catch (error) {
+      console.error("Fetch user boards error:", error);
+      return rejectWithValue(
+        error.response?.data?.msg || "Failed to fetch boards"
+      );
+    }
+  }
+);
 
 // Fetch board by ID
 export const fetchBoardById = createAsyncThunk(
@@ -25,7 +42,6 @@ export const saveCurrentBoard = createAsyncThunk(
   "board/saveCurrent",
   async ({ boardId, blocks, drawing }, { rejectWithValue }) => {
     try {
-      // Match backend structure: data: { blocks, drawing }
       const updateData = {
         data: {
           blocks,
@@ -50,8 +66,9 @@ const boardSlice = createSlice({
   initialState: {
     currentBoardId: null,
     boardName: "",
-    content: [], // blocks
+    content: [],
     drawing: [],
+    userBoards: [], // Add this for dashboard
     status: "idle",
     error: null,
     isSaving: false,
@@ -107,51 +124,49 @@ const boardSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Board
+      // Fetch User Boards
+      .addCase(fetchUserBoards.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(fetchUserBoards.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.userBoards = action.payload;
+        console.log("User boards loaded:", state.userBoards.length);
+      })
+      .addCase(fetchUserBoards.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+      // Fetch Board by ID
       .addCase(fetchBoardById.pending, (state) => {
         state.status = "loading";
         state.error = null;
-        console.log("Fetching board...");
       })
       .addCase(fetchBoardById.fulfilled, (state, action) => {
-        console.log("Fetch fulfilled with payload:", action.payload);
         state.status = "succeeded";
         state.boardName = action.payload.name || "";
-
-        // Handle backend structure: data.blocks and data.drawing
         state.content = action.payload.data?.blocks || [];
         state.drawing = action.payload.data?.drawing || [];
-
-        console.log("Board loaded - Name:", state.boardName);
-        console.log("Board loaded - Blocks:", state.content.length);
-        console.log("Board loaded - Drawing paths:", state.drawing.length);
       })
       .addCase(fetchBoardById.rejected, (state, action) => {
-        console.error("Fetch rejected:", action.payload);
         state.status = "failed";
         state.error = action.payload;
       })
       // Save Board
       .addCase(saveCurrentBoard.pending, (state) => {
         state.isSaving = true;
-        console.log("Saving board...");
       })
       .addCase(saveCurrentBoard.fulfilled, (state, action) => {
-        console.log("Save fulfilled with payload:", action.payload);
         state.isSaving = false;
-
-        // Update state with saved data if backend returns it
         if (action.payload.board?.data?.blocks) {
           state.content = action.payload.board.data.blocks;
         }
         if (action.payload.board?.data?.drawing) {
           state.drawing = action.payload.board.data.drawing;
         }
-
-        console.log("Board saved successfully");
       })
       .addCase(saveCurrentBoard.rejected, (state, action) => {
-        console.error("Save rejected:", action.payload);
         state.isSaving = false;
         state.error = action.payload;
       });

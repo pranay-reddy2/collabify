@@ -36,8 +36,10 @@ export const CreateBoard = async (req, res) => {
 
 export const GetUserBoards = async (req, res) => {
   try {
+    console.log("Fetching boards for user:", req.user);
     const boards = await Board.find({ owner: req.user });
-    res.status(200).send(boards);
+    console.log("Found boards:", boards.length);
+    res.status(200).json(boards); // Use json() instead of send()
   } catch (err) {
     console.error("Error fetching boards:", err);
     res.status(500).json({ msg: err.message });
