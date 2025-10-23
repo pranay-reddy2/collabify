@@ -1,4 +1,3 @@
-// server/index.js
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -15,16 +14,37 @@ import jwt from "jsonwebtoken";
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 8000;
+
 ConnectDB();
+
+// ✅ UPDATED CORS - Allow frontend URL
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL, // Will be your Vercel URL
+];
 
 app.use(
   cors({
-    origin: "https://collabify-l6d2-j2qnxi732-pranay-reddy2s-projects.vercel.app/",
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
+
 app.use(Cookies());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.json({ status: "Server is running" });
+});
+
 app.use("/api/auth/", AuthRouter);
 app.use("/api/boards/", BoardRoutes);
 app.use("/api/messages/", MessageRoutes);
@@ -33,7 +53,7 @@ app.use("/api/user/", userRouter);
 const httpServer = http.createServer(app);
 const io = new IOServer(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
   },
@@ -57,7 +77,6 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id, "User:", socket.userId);
 
-  // Join a board room
   socket.on("join-board", ({ boardId, userName }) => {
     socket.join(boardId);
     console.log(`${userName || socket.id} joined board ${boardId}`);
@@ -68,22 +87,18 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Handle drawing updates
   socket.on("draw", ({ boardId, path }) => {
     socket.to(boardId).emit("draw", { path });
   });
 
-  // Handle block updates
   socket.on("block-update", ({ boardId, block, action }) => {
     socket.to(boardId).emit("block-update", { block, action });
   });
 
-  // Handle new messages
   socket.on("send-message", ({ boardId, message }) => {
     socket.to(boardId).emit("new-message", message);
   });
 
-  // Handle typing indicator
   socket.on("typing", ({ boardId, userName }) => {
     socket.to(boardId).emit("user-typing", { userName });
   });
@@ -102,6 +117,15 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("Socket disconnected:", socket.id);
+  });
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, closing HTTP server");
+  httpServer.close(() => {
+    console.log("HTTP server closed");
+    process.exit(0);
   });
 });
 
