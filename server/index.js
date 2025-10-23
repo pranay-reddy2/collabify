@@ -17,25 +17,45 @@ const port = process.env.PORT || 8000;
 
 ConnectDB();
 
-// ✅ UPDATED CORS - Allow frontend URL
+// ✅ FIXED CORS CONFIGURATION
 const allowedOrigins = [
   "http://localhost:5173",
-  process.env.FRONTEND_URL, // Will be your Vercel URL
+  "https://collabify-czb7rwatl-pranay-reddy2s-projects.vercel.app", // Your current Vercel URL
+  process.env.FRONTEND_URL,
 ];
-const l = process.env.FRONTEND_URL || "http://localhost:5173";
-console.log(l);
+
+// Remove any undefined/null values
+const filteredOrigins = allowedOrigins.filter(Boolean);
+
+console.log("🌐 Allowed CORS Origins:", filteredOrigins);
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      // Check exact match
+      if (filteredOrigins.includes(origin)) {
+        return callback(null, true);
       }
+
+      // Allow all Vercel preview deployments
+      if (origin && origin.includes("vercel.app")) {
+        return callback(null, true);
+      }
+
+      console.log("❌ Blocked origin:", origin);
+      callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   })
 );
+
+// ✅ Handle preflight requests
+app.options("*", cors());
 
 app.use(Cookies());
 app.use(express.json({ limit: "10mb" }));
@@ -43,7 +63,10 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Health check endpoint
 app.get("/", (req, res) => {
-  res.json({ status: "Server is running" });
+  res.json({
+    status: "Server is running",
+    allowedOrigins: filteredOrigins,
+  });
 });
 
 app.use("/api/auth/", AuthRouter);
@@ -54,7 +77,7 @@ app.use("/api/user/", userRouter);
 const httpServer = http.createServer(app);
 const io = new IOServer(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: filteredOrigins,
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
   },
@@ -132,4 +155,5 @@ process.on("SIGTERM", () => {
 
 httpServer.listen(port, () => {
   console.log(`Server started on port ${port}`);
+  console.log("🌐 CORS enabled for:", filteredOrigins);
 });
