@@ -1,3 +1,4 @@
+// client/collabify/src/api/api.js
 import axios from "axios";
 
 const api = axios.create({
@@ -83,6 +84,60 @@ export const getUserBoards = async () => {
       error.response?.data?.message ||
       error.message ||
       "Failed to fetch user boards"
+    );
+  }
+};
+
+export const addCollaborator = async (boardId, identifier) => {
+  try {
+    const response = await api.post(`/api/boards/${boardId}/collaborators`, {
+      identifier,
+    });
+    return response.data;
+  } catch (error) {
+    throw (
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to add collaborator"
+    );
+  }
+};
+
+export const removeCollaborator = async (boardId, collaboratorId) => {
+  try {
+    const response = await api.delete(
+      `/api/boards/${boardId}/collaborators/${collaboratorId}`
+    );
+    return response.data;
+  } catch (error) {
+    throw (
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to remove collaborator"
+    );
+  }
+};
+
+export const getMessages = async (boardId) => {
+  try {
+    const response = await api.get(`/api/messages/${boardId}`);
+    return response.data;
+  } catch (error) {
+    throw (
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to fetch messages"
+    );
+  }
+};
+
+export const sendMessage = async (boardId, content) => {
+  try {
+    const response = await api.post(`/api/messages/${boardId}`, { content });
+    return response.data;
+  } catch (error) {
+    throw (
+      error.response?.data?.message || error.message || "Failed to send message"
     );
   }
 };

@@ -1,9 +1,8 @@
-// src/pages/BoardPage.jsx
+// src/pages/BoardPage.jsx - Add socket.io and chat
 import React, { useState, useEffect, useRef, memo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { ReactSketchCanvas } from "react-sketch-canvas";
-// --- Redux Imports ---
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchBoardById,
@@ -18,7 +17,6 @@ import {
   setEraserMode,
   setCurrentBoardId,
 } from "../redux/boardSlice";
-// --- Icon Imports ---
 import {
   FiSave,
   FiType,
@@ -29,13 +27,16 @@ import {
   FiRewind,
   FiMove,
   FiHome,
+  FiMessageSquare,
+  FiUsers,
 } from "react-icons/fi";
 import { BsEraser } from "react-icons/bs";
+import io from "socket.io-client";
+import ChatPanel from "../components/ChatPanel";
 
-// --- Pen Colors ---
 const penColors = ["#E5E7EB", "#EF4444", "#3B82F6", "#22C55E"];
 
-// --- TextBlock Component ---
+// TextBlock and ImageBlock components remain the same
 const TextBlock = memo(
   ({
     block,
@@ -160,7 +161,6 @@ const TextBlock = memo(
   }
 );
 
-// --- ImageBlock Component ---
 const ImageBlock = memo(
   ({ block, deleteBlock, updateBlockPosition, updateBlockSize, isDrawing }) => {
     const [size, setSize] = useState({ width: block.width || 200 });
@@ -244,15 +244,11 @@ const ImageBlock = memo(
   }
 );
 
-// --- Main BoardPage Component ---
 const BoardPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  console.log("Board ID from useParams:", id);
-
-  // --- Select state from Redux ---
   const {
     boardName,
     content,
@@ -264,12 +260,67 @@ const BoardPage = () => {
     isErasing,
   } = useSelector((state) => state.board);
 
-  // Local state
+  const { userData } = useSelector((state) => state.user);
+
   const [placingBlock, setPlacingBlock] = useState(null);
   const [clickCoords, setClickCoords] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
 
   const fileInputRef = useRef(null);
   const sketchCanvas = useRef(null);
+
+  // Initialize Socket.io
+  useEffect(() => {
+    if (!id || !userData) return;
+
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1];
+
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
+
+    const newSocket = io("http://localhost:8000", {
+      auth: { token },
+    });
+
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
+      newSocket.emit("join-board", {
+        boardId: id,
+        userName: userData.name,
+      });
+    });
+
+    newSocket.on("user-joined", ({ userName, userId }) => {
+      console.log(`${userName} joined the board`);
+      setOnlineUsers((prev) => [...prev, { userId, userName }]);
+    });
+
+    newSocket.on("user-left", ({ socketId }) => {
+      console.log("User left:", socketId);
+      setOnlineUsers((prev) =>
+        prev.filter((user) => user.socketId !== socketId)
+      );
+    });
+
+    newSocket.on("draw", ({ path }) => {
+      if (sketchCanvas.current) {
+        sketchCanvas.current.loadPaths([path]);
+      }
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [id, userData]);
 
   // Fetch board data on mount
   useEffect(() => {
@@ -284,7 +335,6 @@ const BoardPage = () => {
       .unwrap()
       .then((fetchedData) => {
         console.log("Board fetched successfully:", fetchedData);
-        // Load drawing data into canvas
         if (
           fetchedData.data?.drawing?.length > 0 &&
           sketchCanvas.current?.loadPaths
@@ -302,7 +352,6 @@ const BoardPage = () => {
       });
   }, [id, dispatch]);
 
-  // --- Handlers ---
   const handleAddBlock = (type, value = "", x, y) => {
     const payload = {
       type,
@@ -313,22 +362,36 @@ const BoardPage = () => {
       height: type === "text" ? "auto" : undefined,
     };
     dispatch(addBlock(payload));
+
+    // Broadcast to other users
+    socket?.emit("block-update", {
+      boardId: id,
+      block: payload,
+      action: "add",
+    });
   };
 
-  const handleUpdateValue = (id, value) => {
-    dispatch(updateBlockValue({ id, value }));
+  const handleUpdateValue = (blockId, value) => {
+    dispatch(updateBlockValue({ id: blockId, value }));
   };
 
-  const handleDeleteBlock = (id) => {
-    dispatch(deleteBlock(id));
+  const handleDeleteBlock = (blockId) => {
+    dispatch(deleteBlock(blockId));
+    socket?.emit("block-update", {
+      boardId: id,
+      block: { id: blockId },
+      action: "delete",
+    });
   };
 
-  const handleUpdatePosition = (id, point) => {
-    dispatch(updateBlockPosition({ id, x: point.x, y: point.y }));
+  const handleUpdatePosition = (blockId, point) => {
+    dispatch(updateBlockPosition({ id: blockId, x: point.x, y: point.y }));
   };
 
-  const handleUpdateSize = (id, size) => {
-    dispatch(updateBlockSize({ id, width: size.width, height: size.height }));
+  const handleUpdateSize = (blockId, size) => {
+    dispatch(
+      updateBlockSize({ id: blockId, width: size.width, height: size.height })
+    );
   };
 
   const triggerImageUpload = () => {
@@ -415,7 +478,6 @@ const BoardPage = () => {
     if (drawMode) dispatch(setDrawMode(false));
   };
 
-  // --- Render Logic ---
   if (status === "loading" || status === "idle") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -452,7 +514,6 @@ const BoardPage = () => {
           : "cursor-default"
       }`}
     >
-      {/* Background Blobs */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute -top-1/4 -left-1/4 w-96 h-96 bg-indigo-700 rounded-full filter blur-3xl opacity-20 mix-blend-screen animate-pulse" />
         <div
@@ -461,7 +522,6 @@ const BoardPage = () => {
         />
       </div>
 
-      {/* Drawing Canvas */}
       <ReactSketchCanvas
         ref={sketchCanvas}
         width="100%"
@@ -475,7 +535,6 @@ const BoardPage = () => {
         }`}
       />
 
-      {/* Header */}
       <header className="relative z-30 flex justify-between items-center px-6 md:px-12 pt-6">
         <div className="flex items-center gap-4">
           <button
@@ -489,9 +548,32 @@ const BoardPage = () => {
             {boardName}
           </h1>
         </div>
+
+        <div className="flex items-center gap-3">
+          {/* Online Users */}
+          {onlineUsers.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg">
+              <FiUsers className="w-4 h-4 text-green-400" />
+              <span className="text-sm text-gray-300">
+                {onlineUsers.length + 1}
+              </span>
+            </div>
+          )}
+
+          {/* Chat Toggle */}
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className="p-2 bg-gray-800/50 hover:bg-gray-700/50 backdrop-blur-sm border border-gray-700 rounded-lg transition-colors group pointer-events-auto relative"
+            title="Toggle Chat"
+          >
+            <FiMessageSquare className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+            {isChatOpen && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+            )}
+          </button>
+        </div>
       </header>
 
-      {/* Board Content Area */}
       <div className="flex-1 relative w-full h-full pt-4">
         <AnimatePresence>
           {content.map((block) => {
@@ -525,7 +607,6 @@ const BoardPage = () => {
         </AnimatePresence>
       </div>
 
-      {/* Floating Action Bar */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2 bg-gray-950/70 backdrop-blur-2xl border border-gray-800 p-3 rounded-full shadow-lg">
         <button
           onClick={handleSaveBoard}
@@ -611,7 +692,6 @@ const BoardPage = () => {
         )}
       </div>
 
-      {/* Hidden File Input */}
       <input
         type="file"
         ref={fileInputRef}
@@ -619,6 +699,18 @@ const BoardPage = () => {
         accept="image/*"
         className="hidden"
       />
+
+      <AnimatePresence>
+        {isChatOpen && (
+          <ChatPanel
+            boardId={id}
+            socket={socket}
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
+            currentUser={userData}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

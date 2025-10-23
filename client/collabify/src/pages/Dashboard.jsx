@@ -1,11 +1,17 @@
 // src/pages/Dashboard.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchUserBoards } from "../redux/boardSlice";
 import Navbar from "../components/Navbar";
-import { FiLoader, FiFileText, FiUsers, FiLayers } from "react-icons/fi";
+import {
+  FiLoader,
+  FiFileText,
+  FiUsers,
+  FiLayers,
+  FiStar,
+} from "react-icons/fi";
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -13,6 +19,8 @@ const Dashboard = () => {
 
   const { userBoards, status, error } = useSelector((state) => state.board);
   const { userData } = useSelector((state) => state.user);
+
+  const [activeTab, setActiveTab] = useState("my-boards"); // "my-boards" or "shared"
 
   useEffect(() => {
     dispatch(fetchUserBoards());
@@ -31,13 +39,25 @@ const Dashboard = () => {
     });
   };
 
+  // Filter boards based on ownership
+  const myBoards = userBoards.filter(
+    (board) =>
+      board.owner?._id === userData?._id || board.owner === userData?._id
+  );
+
+  const sharedBoards = userBoards.filter((board) => {
+    const ownerId = board.owner?._id || board.owner;
+    const userId = userData?._id;
+    return ownerId !== userId;
+  });
+
+  const displayedBoards = activeTab === "my-boards" ? myBoards : sharedBoards;
+
   return (
     <div className="min-h-screen flex flex-col bg-black text-gray-100 relative overflow-hidden">
-      {/* Clean Dark Background */}
+      {/* Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-950 to-black opacity-70" />
-
-        {/* Soft blurred blobs */}
         <motion.div
           animate={{ opacity: [0.1, 0.25, 0.1], scale: [1, 1.1, 1] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
@@ -48,8 +68,6 @@ const Dashboard = () => {
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -bottom-20 -right-20 w-96 h-96 bg-purple-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen"
         />
-
-        {/* Floating particles */}
         {Array.from({ length: 25 }).map((_, idx) => (
           <motion.div
             key={idx}
@@ -81,20 +99,20 @@ const Dashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-              My Boards
+              {activeTab === "my-boards" ? "My Boards" : "Shared with Me"}
             </h1>
             <p className="text-gray-400 text-sm md:text-base">
               {status === "succeeded" && (
                 <span className="flex items-center gap-2">
                   <FiLayers className="w-4 h-4" />
-                  {userBoards.length}{" "}
-                  {userBoards.length === 1 ? "board" : "boards"} total
+                  {displayedBoards.length}{" "}
+                  {displayedBoards.length === 1 ? "board" : "boards"}
                 </span>
               )}
             </p>
           </div>
 
-          {/* User Name on Top Right */}
+          {/* User Info */}
           {userData && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -109,6 +127,38 @@ const Dashboard = () => {
               </span>
             </motion.div>
           )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mt-6">
+          <button
+            onClick={() => setActiveTab("my-boards")}
+            className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 ${
+              activeTab === "my-boards"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                : "bg-gray-900/50 text-gray-400 hover:text-white hover:bg-gray-800/50 border border-gray-800"
+            }`}
+          >
+            <FiFileText className="w-4 h-4" />
+            My Boards
+            <span className="px-2 py-0.5 bg-white/10 rounded-full text-xs">
+              {myBoards.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("shared")}
+            className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 ${
+              activeTab === "shared"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                : "bg-gray-900/50 text-gray-400 hover:text-white hover:bg-gray-800/50 border border-gray-800"
+            }`}
+          >
+            <FiUsers className="w-4 h-4" />
+            Shared with Me
+            <span className="px-2 py-0.5 bg-white/10 rounded-full text-xs">
+              {sharedBoards.length}
+            </span>
+          </button>
         </div>
       </motion.header>
 
@@ -161,7 +211,7 @@ const Dashboard = () => {
         {/* Boards Grid */}
         {status === "succeeded" && (
           <>
-            {userBoards.length === 0 ? (
+            {displayedBoards.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -174,13 +224,21 @@ const Dashboard = () => {
                     transition={{ duration: 2, repeat: Infinity }}
                     className="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6"
                   >
-                    <FiFileText className="w-10 h-10 text-indigo-400" />
+                    {activeTab === "my-boards" ? (
+                      <FiFileText className="w-10 h-10 text-indigo-400" />
+                    ) : (
+                      <FiUsers className="w-10 h-10 text-purple-400" />
+                    )}
                   </motion.div>
                   <h2 className="text-2xl font-bold text-white mb-2">
-                    No boards yet
+                    {activeTab === "my-boards"
+                      ? "No boards yet"
+                      : "No shared boards"}
                   </h2>
                   <p className="text-gray-400 text-sm mb-8">
-                    Create your first board to start collaborating
+                    {activeTab === "my-boards"
+                      ? "Create your first board to start collaborating"
+                      : "Boards shared with you will appear here"}
                   </p>
                 </div>
               </motion.div>
@@ -192,47 +250,82 @@ const Dashboard = () => {
                 className="relative z-10 px-6 md:px-12 pb-24 mt-6"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {userBoards.map((board, index) => (
-                    <motion.div
-                      key={board._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      whileHover={{ scale: 1.03, y: -5 }}
-                      onClick={() => handleBoardClick(board._id)}
-                      className="group bg-gray-950/60 backdrop-blur-xl border border-gray-800/50 hover:border-indigo-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-indigo-500/20 relative overflow-hidden"
-                    >
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-semibold rounded-full border border-indigo-500/30">
-                            Board
-                          </span>
-                          <span className="text-gray-500 text-xs">
-                            {formatDate(board.updatedAt || board.createdAt)}
-                          </span>
-                        </div>
+                  {displayedBoards.map((board, index) => {
+                    const isOwner =
+                      board.owner?._id === userData?._id ||
+                      board.owner === userData?._id;
 
-                        <h2 className="text-white font-bold text-xl mb-3 truncate group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all">
-                          {board.name}
-                        </h2>
-
-                        <p className="text-gray-400 text-sm line-clamp-2 mb-4 min-h-[40px]">
-                          {board.description || "No description provided"}
-                        </p>
-
-                        <div className="flex items-center gap-4 text-xs text-gray-500 pt-4 border-t border-gray-800/50">
-                          <div className="flex items-center gap-1.5">
-                            <FiLayers className="w-3.5 h-3.5" />
-                            <span>{board.data?.blocks?.length || 0}</span>
+                    return (
+                      <motion.div
+                        key={board._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        whileHover={{ scale: 1.03, y: -5 }}
+                        onClick={() => handleBoardClick(board._id)}
+                        className={`group backdrop-blur-xl rounded-2xl p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl relative overflow-hidden ${
+                          isOwner
+                            ? "bg-gray-950/60 border border-gray-800/50 hover:border-indigo-500/50 hover:shadow-indigo-500/20"
+                            : "bg-purple-950/20 border border-purple-800/30 hover:border-purple-500/50 hover:shadow-purple-500/20"
+                        }`}
+                      >
+                        <div className="relative z-10">
+                          <div className="flex items-center justify-between mb-4">
+                            <span
+                              className={`px-3 py-1 text-xs font-semibold rounded-full border ${
+                                isOwner
+                                  ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
+                                  : "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                              }`}
+                            >
+                              {isOwner ? (
+                                <span className="flex items-center gap-1">
+                                  <FiStar className="w-3 h-3" />
+                                  Owner
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <FiUsers className="w-3 h-3" />
+                                  Shared
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-gray-500 text-xs">
+                              {formatDate(board.updatedAt || board.createdAt)}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <FiUsers className="w-3.5 h-3.5" />
-                            <span>{board.collaborators?.length || 0}</span>
+
+                          <h2 className="text-white font-bold text-xl mb-3 truncate group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all">
+                            {board.name}
+                          </h2>
+
+                          <p className="text-gray-400 text-sm line-clamp-2 mb-4 min-h-[40px]">
+                            {board.description || "No description provided"}
+                          </p>
+
+                          {!isOwner && board.owner && (
+                            <div className="mb-3 flex items-center gap-2 text-xs text-purple-400">
+                              <div className="w-5 h-5 flex items-center justify-center rounded-full bg-purple-500/20 text-purple-300 font-semibold text-xs">
+                                {board.owner.name?.charAt(0).toUpperCase()}
+                              </div>
+                              <span>by {board.owner.name}</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-4 text-xs text-gray-500 pt-4 border-t border-gray-800/50">
+                            <div className="flex items-center gap-1.5">
+                              <FiLayers className="w-3.5 h-3.5" />
+                              <span>{board.data?.blocks?.length || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <FiUsers className="w-3.5 h-3.5" />
+                              <span>{board.collaborators?.length || 0}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.main>
             )}
