@@ -275,19 +275,24 @@ const BoardPage = () => {
   useEffect(() => {
     if (!id || !userData) return;
 
-    const token = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("token="))
-      ?.split("=")[1];
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(";").shift();
+    };
+    const token = getCookie("token");
 
     if (!token) {
       console.error("No token found");
       return;
     }
 
-    const newSocket = io("http://localhost:8000", {
-      auth: { token },
-    });
+    const newSocket = io(
+      import.meta.env.VITE_SOCKET_URL || "http://localhost:8000",
+      {
+        auth: { token },
+      }
+    );
 
     newSocket.on("connect", () => {
       console.log("Socket connected:", newSocket.id);

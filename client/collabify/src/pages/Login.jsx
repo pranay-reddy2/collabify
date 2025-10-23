@@ -29,7 +29,7 @@ const Login = () => {
 
       navigate("/dashboard");
       setPassword("");
-      setEmail("");
+      setName("");
     } catch (error) {
       console.error("SignIn failed", error);
     }

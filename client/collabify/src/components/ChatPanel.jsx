@@ -55,7 +55,7 @@ const ChatPanel = ({ boardId, socket, isOpen, onClose, currentUser }) => {
   const fetchMessages = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8000/api/messages/${boardId}`,
+        `${import.meta.env.VITE_API_URL}/api/messages/${boardId}`,
         { withCredentials: true }
       );
       setMessages(response.data);
@@ -70,7 +70,7 @@ const ChatPanel = ({ boardId, socket, isOpen, onClose, currentUser }) => {
 
     try {
       const response = await axios.post(
-        `http://localhost:8000/api/messages/${boardId}`,
+        `${import.meta.env.VITE_API_URL}/api/messages/${boardId}`,
         { content: newMessage },
         { withCredentials: true }
       );

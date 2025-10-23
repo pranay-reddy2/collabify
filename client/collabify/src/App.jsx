@@ -18,6 +18,7 @@ export default function App() {
         path="/login"
         element={!userData ? <Login /> : <Navigate to="/dashboard" />}
       />
+      <Route path="/" element={<Login />} />
       <Route
         path="/register"
         element={!userData ? <Register /> : <Navigate to="/dashboard" />}
