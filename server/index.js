@@ -19,7 +19,7 @@ ConnectDB();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://collabify-l6d2-j2qnxi732-pranay-reddy2s-projects.vercel.app/",
     credentials: true,
   })
 );
