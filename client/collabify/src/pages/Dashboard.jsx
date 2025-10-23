@@ -2,15 +2,17 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { fetchUserBoards } from "../redux/boardSlice";
 import Navbar from "../components/Navbar";
-import { FiLoader, FiFileText } from "react-icons/fi";
+import { FiLoader, FiFileText, FiUsers, FiLayers } from "react-icons/fi";
 
 const Dashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const { userBoards, status, error } = useSelector((state) => state.board);
+  const { userData } = useSelector((state) => state.user);
 
   useEffect(() => {
     dispatch(fetchUserBoards());
@@ -30,142 +32,215 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-gray-100 relative overflow-hidden px-6 py-12">
-      {/* Background Gradient */}
+    <div className="min-h-screen flex flex-col bg-black text-gray-100 relative overflow-hidden">
+      {/* Clean Dark Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black opacity-30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-950 to-black opacity-70" />
 
-        {/* Neon blobs */}
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-indigo-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen animate-pulse-slow" />
-        <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-purple-700 rounded-full filter blur-3xl opacity-10 mix-blend-screen animate-pulse-slow" />
+        {/* Soft blurred blobs */}
+        <motion.div
+          animate={{ opacity: [0.1, 0.25, 0.1], scale: [1, 1.1, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-20 -left-20 w-96 h-96 bg-indigo-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen"
+        />
+        <motion.div
+          animate={{ opacity: [0.1, 0.2, 0.1], scale: [1, 1.15, 1] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -bottom-20 -right-20 w-96 h-96 bg-purple-700 rounded-full filter blur-3xl opacity-15 mix-blend-screen"
+        />
 
-        {/* Floating particles / stars */}
-        {Array.from({ length: 30 }).map((_, idx) => (
-          <div
+        {/* Floating particles */}
+        {Array.from({ length: 25 }).map((_, idx) => (
+          <motion.div
             key={idx}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-float"
+            animate={{
+              y: [0, -20, 0],
+              opacity: [0.2, 0.6, 0.2],
+            }}
+            transition={{
+              duration: 6 + Math.random() * 6,
+              repeat: Infinity,
+              delay: Math.random() * 6,
+            }}
+            className="absolute w-1 h-1 bg-white rounded-full opacity-20"
             style={{
               top: `${Math.random() * 100}%`,
               left: `${Math.random() * 100}%`,
-              animationDuration: `${5 + Math.random() * 10}s`,
-              animationDelay: `${Math.random() * 5}s`,
             }}
           />
         ))}
       </div>
 
-      {/* Dashboard Header */}
-      <header className="relative z-10 flex items-center justify-between p-6 rounded-xl">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white">My Boards</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {status === "succeeded" && (
-              <>
-                {userBoards.length}{" "}
-                {userBoards.length === 1 ? "board" : "boards"} total
-              </>
-            )}
-          </p>
-        </div>
-      </header>
-
-      {/* Loading State */}
-      {status === "loading" && (
-        <div className="relative z-10 flex items-center justify-center py-20">
-          <FiLoader className="w-8 h-8 text-indigo-500 animate-spin" />
-        </div>
-      )}
-
-      {/* Error State */}
-      {status === "failed" && (
-        <div className="relative z-10 flex items-center justify-center py-20">
-          <div className="text-center">
-            <p className="text-red-400 mb-4">{error}</p>
-            <button
-              onClick={() => dispatch(fetchUserBoards())}
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500"
-            >
-              Retry
-            </button>
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 px-6 md:px-12 py-8"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+              My Boards
+            </h1>
+            <p className="text-gray-400 text-sm md:text-base">
+              {status === "succeeded" && (
+                <span className="flex items-center gap-2">
+                  <FiLayers className="w-4 h-4" />
+                  {userBoards.length}{" "}
+                  {userBoards.length === 1 ? "board" : "boards"} total
+                </span>
+              )}
+            </p>
           </div>
-        </div>
-      )}
 
-      {/* Boards Grid */}
-      {status === "succeeded" && (
-        <>
-          {userBoards.length === 0 ? (
-            <div className="relative z-10 flex flex-col items-center justify-center py-20">
-              <FiFileText className="w-16 h-16 text-gray-600 mb-4" />
-              <h2 className="text-xl text-gray-400 mb-2">No boards yet</h2>
-              <p className="text-gray-500 text-sm mb-6">
-                Create your first board to get started
-              </p>
-              <button
-                onClick={() => navigate("/create")}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full transition"
-              >
-                Create Board
-              </button>
-            </div>
-          ) : (
-            <main className="relative z-10 mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {userBoards.map((board) => (
-                <div
-                  key={board._id}
-                  onClick={() => handleBoardClick(board._id)}
-                  className="bg-gray-950/70 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl shadow-indigo-500/10 p-6 hover:scale-105 hover:border-indigo-500/50 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-indigo-400 font-semibold text-sm">
-                      Board
-                    </span>
-                    <span className="text-gray-400 text-xs">
-                      {formatDate(board.updatedAt || board.createdAt)}
-                    </span>
-                  </div>
-                  <h2 className="text-white font-bold text-xl mb-3 truncate group-hover:text-indigo-400 transition">
-                    {board.name}
-                  </h2>
-                  <p className="text-gray-400 text-sm line-clamp-2">
-                    {board.description || "No description"}
-                  </p>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-                    <span>{board.data?.blocks?.length || 0} blocks</span>
-                    <span>•</span>
-                    <span>
-                      {board.collaborators?.length || 0} collaborators
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </main>
+          {/* User Name on Top Right */}
+          {userData && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 px-5 py-2 bg-gray-900/50 border border-gray-800/70 rounded-xl backdrop-blur-md shadow-lg"
+            >
+              <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold uppercase">
+                {userData.name ? userData.name.charAt(0) : "U"}
+              </div>
+              <span className="text-sm font-semibold text-gray-200">
+                {userData.name || "User"}
+              </span>
+            </motion.div>
           )}
-        </>
-      )}
+        </div>
+      </motion.header>
 
-      {/* Bottom Navbar */}
+      {/* Loading */}
+      <AnimatePresence mode="wait">
+        {status === "loading" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="relative z-10 flex flex-col items-center justify-center py-20"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            >
+              <FiLoader className="w-12 h-12 text-indigo-500" />
+            </motion.div>
+            <p className="mt-4 text-gray-400 animate-pulse">
+              Loading your boards...
+            </p>
+          </motion.div>
+        )}
+
+        {/* Error */}
+        {status === "failed" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative z-10 flex items-center justify-center py-20"
+          >
+            <div className="text-center bg-gray-950/70 backdrop-blur-xl border border-red-500/30 rounded-2xl p-8 max-w-md">
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiFileText className="w-8 h-8 text-red-400" />
+              </div>
+              <p className="text-red-400 mb-6">{error}</p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => dispatch(fetchUserBoards())}
+                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold shadow-lg transition-all"
+              >
+                Retry
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Boards Grid */}
+        {status === "succeeded" && (
+          <>
+            {userBoards.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="relative z-10 flex flex-col items-center justify-center py-20 px-6"
+              >
+                <div className="bg-gray-950/70 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-12 text-center max-w-md">
+                  <motion.div
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                  >
+                    <FiFileText className="w-10 h-10 text-indigo-400" />
+                  </motion.div>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    No boards yet
+                  </h2>
+                  <p className="text-gray-400 text-sm mb-8">
+                    Create your first board to start collaborating
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.main
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="relative z-10 px-6 md:px-12 pb-24 mt-6"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {userBoards.map((board, index) => (
+                    <motion.div
+                      key={board._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ scale: 1.03, y: -5 }}
+                      onClick={() => handleBoardClick(board._id)}
+                      className="group bg-gray-950/60 backdrop-blur-xl border border-gray-800/50 hover:border-indigo-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-indigo-500/20 relative overflow-hidden"
+                    >
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-semibold rounded-full border border-indigo-500/30">
+                            Board
+                          </span>
+                          <span className="text-gray-500 text-xs">
+                            {formatDate(board.updatedAt || board.createdAt)}
+                          </span>
+                        </div>
+
+                        <h2 className="text-white font-bold text-xl mb-3 truncate group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all">
+                          {board.name}
+                        </h2>
+
+                        <p className="text-gray-400 text-sm line-clamp-2 mb-4 min-h-[40px]">
+                          {board.description || "No description provided"}
+                        </p>
+
+                        <div className="flex items-center gap-4 text-xs text-gray-500 pt-4 border-t border-gray-800/50">
+                          <div className="flex items-center gap-1.5">
+                            <FiLayers className="w-3.5 h-3.5" />
+                            <span>{board.data?.blocks?.length || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <FiUsers className="w-3.5 h-3.5" />
+                            <span>{board.collaborators?.length || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.main>
+            )}
+          </>
+        )}
+      </AnimatePresence>
+
       <Navbar />
-
-      {/* Tailwind Custom Animations */}
-      <style>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.15; }
-          50% { opacity: 0.3; }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-          0% { transform: translateY(0px); opacity: 0.2; }
-          50% { transform: translateY(-20px); opacity: 0.5; }
-          100% { transform: translateY(0px); opacity: 0.2; }
-        }
-        .animate-float {
-          animation: float infinite ease-in-out;
-        }
-      `}</style>
     </div>
   );
 };
