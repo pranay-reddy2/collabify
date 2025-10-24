@@ -1,4 +1,3 @@
-import React from "react";
 import { useEffect } from "react";
 import { getCurrentUser } from "../api/api.js";
 import { useDispatch } from "react-redux";
@@ -10,16 +9,26 @@ function useCurrentUser() {
   useEffect(() => {
     const fetchuser = async () => {
       try {
+        // Check if token exists
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.log("No token found, skipping user fetch");
+          return;
+        }
+
         const result = await getCurrentUser();
-        console.log(result);
+        console.log("Current user:", result);
         dispatch(setUserData(result));
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching user:", error);
+        // Clear invalid token
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       }
     };
 
     fetchuser();
-  }, []);
+  }, [dispatch]);
 }
 
 export default useCurrentUser;

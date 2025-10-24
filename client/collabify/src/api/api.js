@@ -1,4 +1,3 @@
-// client/collabify/src/api/api.js
 import axios from "axios";
 
 const api = axios.create({
@@ -6,9 +5,43 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Add token to all requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle token expiration
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const register = async (userData) => {
   try {
     const response = await api.post("/api/auth/register", userData);
+
+    // Store token in localStorage
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+    }
+
     return response.data;
   } catch (error) {
     throw (
@@ -20,10 +53,23 @@ export const register = async (userData) => {
 export const login = async (userData) => {
   try {
     const response = await api.post("/api/auth/login", userData);
+
+    // Store token in localStorage
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+    }
+
     return response.data;
   } catch (error) {
     throw error.response?.data?.message || error.message || "Login failed";
   }
+};
+
+export const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  window.location.href = "/login";
 };
 
 export const getCurrentUser = async () => {

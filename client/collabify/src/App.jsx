@@ -1,31 +1,47 @@
 import React from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import useCurrentUser from "./hook/useCurrentuser";
-import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
 import CreateBoard from "./pages/CreateBoard";
 import BoardPage from "./pages/BoardPage";
+import useCurrentUser from "./hook/useCurrentuser";
+import { useSelector } from "react-redux";
 
 export default function App() {
   useCurrentUser();
   const { userData } = useSelector((state) => state.user);
+
+  // Check if token exists in localStorage
+  const hasToken = !!localStorage.getItem("token");
+  const isAuthenticated = userData || hasToken;
+
   return (
     <Routes>
       <Route
         path="/login"
-        element={!userData ? <Login /> : <Navigate to="/dashboard" />}
+        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />}
       />
-      <Route path="/" element={<Login />} />
+      <Route
+        path="/"
+        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />}
+      />
       <Route
         path="/register"
-        element={!userData ? <Register /> : <Navigate to="/dashboard" />}
+        element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />}
       />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/create" element={<CreateBoard />} />
-      <Route path="/boardpage/:id" element={<BoardPage />} />
+      <Route
+        path="/dashboard"
+        element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/create"
+        element={isAuthenticated ? <CreateBoard /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/boardpage/:id"
+        element={isAuthenticated ? <BoardPage /> : <Navigate to="/login" />}
+      />
     </Routes>
   );
 }

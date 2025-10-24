@@ -1,4 +1,4 @@
-// src/pages/BoardPage.jsx - Add socket.io and chat
+// src/pages/BoardPage.jsx - Complete updated version
 import React, { useState, useEffect, useRef, memo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
@@ -36,7 +36,6 @@ import ChatPanel from "../components/ChatPanel";
 
 const penColors = ["#E5E7EB", "#EF4444", "#3B82F6", "#22C55E"];
 
-// TextBlock and ImageBlock components remain the same
 const TextBlock = memo(
   ({
     block,
@@ -271,26 +270,29 @@ const BoardPage = () => {
   const fileInputRef = useRef(null);
   const sketchCanvas = useRef(null);
 
-  // Initialize Socket.io
+  // Initialize Socket.io with localStorage token
   useEffect(() => {
     if (!id || !userData) return;
 
-    const getCookie = (name) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(";").shift();
-    };
-    const token = getCookie("token");
+    // Get token from localStorage instead of cookie
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      console.error("No token found");
+      console.error("No token found in localStorage");
+      navigate("/login");
       return;
     }
+
+    console.log("Connecting to socket with token...");
 
     const newSocket = io(
       import.meta.env.VITE_SOCKET_URL || "http://localhost:8000",
       {
         auth: { token },
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
       }
     );
 
@@ -300,6 +302,10 @@ const BoardPage = () => {
         boardId: id,
         userName: userData.name,
       });
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
     });
 
     newSocket.on("user-joined", ({ userName, userId }) => {
@@ -320,12 +326,21 @@ const BoardPage = () => {
       }
     });
 
+    newSocket.on("block-update", ({ block, action }) => {
+      if (action === "add") {
+        dispatch(addBlock(block));
+      } else if (action === "delete") {
+        dispatch(deleteBlock(block.id));
+      }
+    });
+
     setSocket(newSocket);
 
     return () => {
+      console.log("Disconnecting socket...");
       newSocket.disconnect();
     };
-  }, [id, userData]);
+  }, [id, userData, navigate, dispatch]);
 
   // Fetch board data on mount
   useEffect(() => {

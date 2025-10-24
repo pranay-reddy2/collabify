@@ -1,4 +1,4 @@
-// src/pages/Dashboard.jsx
+// src/pages/Dashboard.jsx - Complete with Logout
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ import {
   FiUsers,
   FiLayers,
   FiStar,
+  FiLogOut,
 } from "react-icons/fi";
 
 const Dashboard = () => {
@@ -20,14 +21,29 @@ const Dashboard = () => {
   const { userBoards, status, error } = useSelector((state) => state.board);
   const { userData } = useSelector((state) => state.user);
 
-  const [activeTab, setActiveTab] = useState("my-boards"); // "my-boards" or "shared"
+  const [activeTab, setActiveTab] = useState("my-boards");
 
   useEffect(() => {
     dispatch(fetchUserBoards());
   }, [dispatch]);
 
+  // Listen for tab change events from Navbar
+  useEffect(() => {
+    const handleTabChange = (e) => {
+      setActiveTab(e.detail);
+    };
+    window.addEventListener("changeTab", handleTabChange);
+    return () => window.removeEventListener("changeTab", handleTabChange);
+  }, []);
+
   const handleBoardClick = (boardId) => {
     navigate(`/boardpage/${boardId}`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
   const formatDate = (dateString) => {
@@ -112,21 +128,35 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {/* User Info */}
-          {userData && (
-            <motion.div
+          {/* User Info & Logout */}
+          <div className="flex items-center gap-3">
+            {userData && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 px-5 py-2 bg-gray-900/50 border border-gray-800/70 rounded-xl backdrop-blur-md shadow-lg"
+              >
+                <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold uppercase">
+                  {userData.name ? userData.name.charAt(0) : "U"}
+                </div>
+                <span className="text-sm font-semibold text-gray-200">
+                  {userData.name || "User"}
+                </span>
+              </motion.div>
+            )}
+
+            {/* Logout Button */}
+            <motion.button
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 px-5 py-2 bg-gray-900/50 border border-gray-800/70 rounded-xl backdrop-blur-md shadow-lg"
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600/90 hover:bg-red-500 border border-red-500/50 rounded-xl backdrop-blur-md shadow-lg transition-colors"
+              title="Logout"
             >
-              <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold uppercase">
-                {userData.name ? userData.name.charAt(0) : "U"}
-              </div>
-              <span className="text-sm font-semibold text-gray-200">
-                {userData.name || "User"}
-              </span>
-            </motion.div>
-          )}
+              <FiLogOut className="w-4 h-4 text-white" />
+              <span className="text-sm font-semibold text-white">Logout</span>
+            </motion.button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -240,6 +270,16 @@ const Dashboard = () => {
                       ? "Create your first board to start collaborating"
                       : "Boards shared with you will appear here"}
                   </p>
+                  {activeTab === "my-boards" && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => navigate("/create")}
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold shadow-lg transition-all"
+                    >
+                      Create Your First Board
+                    </motion.button>
+                  )}
                 </div>
               </motion.div>
             ) : (
