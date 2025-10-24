@@ -1,3 +1,4 @@
+// src/pages/Login.jsx - FIXED VERSION
 import React, { useState } from "react";
 import logo from "../assets/logo.png";
 import { FiEye, FiEyeOff } from "react-icons/fi";
@@ -29,16 +30,30 @@ const Login = () => {
 
     try {
       const response = await login({ name, password });
-      console.log("Login response:", response);
+      console.log("✅ Login successful:", response);
 
-      // ✅ FIX: Store only the user object in Redux
+      // Ensure we have user data
+      if (!response.user) {
+        throw new Error("No user data received from server");
+      }
+
+      // Store user data in Redux
       dispatch(setUserData(response.user));
 
-      navigate("/dashboard");
+      // Store in localStorage for persistence
+      localStorage.setItem("user", JSON.stringify(response.user));
+
+      console.log("✅ User data stored:", response.user);
+      console.log("✅ Token stored:", !!localStorage.getItem("token"));
+
+      // Clear form
       setPassword("");
       setName("");
+
+      // Navigate to dashboard
+      navigate("/dashboard");
     } catch (error) {
-      console.error("SignIn failed", error);
+      console.error("❌ Login failed:", error);
       setError(error.toString() || "Login failed");
     } finally {
       setLoading(false);

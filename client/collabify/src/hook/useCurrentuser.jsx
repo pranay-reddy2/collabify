@@ -1,14 +1,22 @@
+// src/hook/useCurrentuser.jsx - FIXED VERSION
 import { useEffect } from "react";
 import { getCurrentUser } from "../api/api.js";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setUserData } from "../redux/userslice.js";
 
 function useCurrentUser() {
   const dispatch = useDispatch();
+  const { userData } = useSelector((state) => state.user);
 
   useEffect(() => {
-    const fetchuser = async () => {
+    const fetchUser = async () => {
       try {
+        // Skip if userData already loaded
+        if (userData) {
+          console.log("User data already loaded:", userData);
+          return;
+        }
+
         // Check if token exists
         const token = localStorage.getItem("token");
         if (!token) {
@@ -16,21 +24,29 @@ function useCurrentUser() {
           return;
         }
 
+        console.log("Fetching current user...");
         const result = await getCurrentUser();
-        console.log("Current user:", result);
+        console.log("Current user fetched:", result);
 
-        // ✅ FIX: Store only the user object, not the entire response
+        // Store user data in Redux
         dispatch(setUserData(result));
+
+        // Also update localStorage for persistence
+        localStorage.setItem("user", JSON.stringify(result));
       } catch (error) {
         console.error("Error fetching user:", error);
         // Clear invalid token
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        // Clear Redux state
+        dispatch(setUserData(null));
       }
     };
 
-    fetchuser();
-  }, [dispatch]);
+    fetchUser();
+  }, [dispatch, userData]); // Add userData to dependencies
+
+  return userData;
 }
 
 export default useCurrentUser;
