@@ -19,9 +19,8 @@ const Register = () => {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    setError("");
 
-    if (!password || !name || !email) {
+    if (!name || !email || !password) {
       setError("All fields are required.");
       return;
     }
@@ -33,21 +32,39 @@ const Register = () => {
     }
 
     setLoading(true);
+    setError("");
 
     try {
       const response = await register({ name, email, password });
-      console.log("✅ SignUp successful:", response);
+      console.log("✅ Registration successful:", response);
 
-      // ✅ FIX: Store only the user object in Redux
+      // ✅ Ensure we have user data
+      if (!response.user) {
+        throw new Error("No user data received from server");
+      }
+
+      // ✅ Save user data in Redux
       dispatch(setUserData(response.user));
 
-      navigate("/dashboard");
-      setEmail("");
+      // ✅ Save user data and token in localStorage for persistence
+      localStorage.setItem("user", JSON.stringify(response.user));
+      if (response.token) {
+        localStorage.setItem("token", response.token);
+      }
+
+      console.log("✅ User stored:", response.user);
+      console.log("✅ Token stored:", !!localStorage.getItem("token"));
+
+      // ✅ Clear form
       setName("");
+      setEmail("");
       setPassword("");
+
+      // ✅ Navigate to dashboard
+      navigate("/dashboard");
     } catch (error) {
-      console.error("❌ SignUp failed:", error);
-      setError(error.toString() || "Failed to register. Try again.");
+      console.error("❌ Registration failed:", error);
+      setError(error.message || "Failed to register. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -56,7 +73,7 @@ const Register = () => {
   const particles = Array.from({ length: 25 }, (_, i) => i);
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black text-gray-100">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-black via-gray-950 to-black text-gray-100">
       {/* Floating neon particles */}
       {particles.map((i) => (
         <div
@@ -72,7 +89,7 @@ const Register = () => {
       ))}
 
       {/* Register Card */}
-      <div className="relative z-10 w-full max-w-md p-8 border border-purple-600 rounded-xl shadow-[0_0_30px_rgba(128,0,255,0.5)]">
+      <div className="relative z-10 w-full max-w-sm p-8 bg-gray-950/70 border border-purple-600/50 rounded-2xl backdrop-blur-2xl shadow-[0_0_40px_rgba(128,0,255,0.3)]">
         <div className="text-center mb-6">
           <img
             src={logo}
@@ -83,7 +100,7 @@ const Register = () => {
             Create Your Account
           </h2>
           <p className="mt-1 text-sm text-purple-300">
-            Join <span className="font-semibold text-white">Collabify</span> and
+            Join <span className="text-white font-semibold">Collabify</span> and
             start collaborating
           </p>
         </div>
@@ -95,7 +112,7 @@ const Register = () => {
             </div>
           )}
 
-          {/* Name */}
+          {/* Full Name */}
           <div>
             <label className="block text-sm font-medium text-purple-300 mb-1">
               Full Name
@@ -139,7 +156,8 @@ const Register = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-2 text-purple-300 hover:text-indigo-400 transition"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-purple-400 hover:text-purple-200 transition"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
                   <FiEyeOff className="w-5 h-5" />
@@ -150,7 +168,7 @@ const Register = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -160,6 +178,7 @@ const Register = () => {
           </button>
         </form>
 
+        {/* Footer */}
         <p className="mt-6 text-center text-sm text-purple-300">
           Already have an account?{" "}
           <a
