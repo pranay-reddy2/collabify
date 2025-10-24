@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import logo from "../assets/logo.png";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { register } from "../api/api.js"; // ✅ your backend API call
+import { useDispatch } from "react-redux";
+import { register } from "../api/api.js";
+import { setUserData } from "../redux/userslice.js";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -13,8 +15,8 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  // ✅ Handle sign up
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError("");
@@ -31,17 +33,21 @@ const Register = () => {
     }
 
     setLoading(true);
+
     try {
-      const user = { name, email, password };
-      const response = await register(user);
+      const response = await register({ name, email, password });
       console.log("✅ SignUp successful:", response);
-      navigate("/dashboard"); // redirect after success
+
+      // ✅ FIX: Store only the user object in Redux
+      dispatch(setUserData(response.user));
+
+      navigate("/dashboard");
       setEmail("");
       setName("");
       setPassword("");
     } catch (error) {
       console.error("❌ SignUp failed:", error);
-      setError("Failed to register. Try again.");
+      setError(error.toString() || "Failed to register. Try again.");
     } finally {
       setLoading(false);
     }
@@ -147,8 +153,8 @@ const Register = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            onClick={handleSignUp}
-            className="w-full py-2 rounded text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-600 shadow-[0_0_15px_rgba(128,0,255,0.7)] transition-all duration-200"
+            disabled={loading}
+            className="w-full py-2 rounded text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-600 shadow-[0_0_15px_rgba(128,0,255,0.7)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>

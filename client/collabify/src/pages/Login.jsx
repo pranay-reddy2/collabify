@@ -18,20 +18,30 @@ const Login = () => {
 
   const handleSignIn = async (e) => {
     e.preventDefault();
+
     if (!name || !password) {
-      alert("All fields are required");
+      setError("All fields are required");
       return;
     }
-    const user = { name, password };
+
+    setLoading(true);
+    setError("");
+
     try {
-      const response = await login(user);
-      dispatch(setUserData(response));
+      const response = await login({ name, password });
+      console.log("Login response:", response);
+
+      // ✅ FIX: Store only the user object in Redux
+      dispatch(setUserData(response.user));
 
       navigate("/dashboard");
       setPassword("");
       setName("");
     } catch (error) {
       console.error("SignIn failed", error);
+      setError(error.toString() || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,8 +150,8 @@ const Login = () => {
           {/* Submit */}
           <button
             type="submit"
-            onClick={handleSignIn}
-            className="w-full py-2 rounded text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-600 shadow-[0_0_15px_rgba(128,0,255,0.7)] transition-all duration-200"
+            disabled={loading}
+            className="w-full py-2 rounded text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-600 shadow-[0_0_15px_rgba(128,0,255,0.7)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -149,7 +159,7 @@ const Login = () => {
 
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-purple-300">
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <a
             href="/register"
             className="font-medium text-indigo-400 hover:text-purple-300 transition"

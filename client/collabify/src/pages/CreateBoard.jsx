@@ -1,4 +1,3 @@
-// src/components/CreateBoard.jsx
 import React, { useState, useEffect } from "react";
 import { FiUserPlus, FiX, FiLoader } from "react-icons/fi";
 import logo from "../assets/logo.png";
@@ -26,7 +25,6 @@ const CreateBoard = () => {
     }
   }, [userData]);
 
-  // Add a collaborator
   const handleAddCollaborator = () => {
     if (collaborator && !collaborators.includes(collaborator)) {
       setCollaborators([...collaborators, collaborator]);
@@ -34,16 +32,14 @@ const CreateBoard = () => {
     }
   };
 
-  // Remove a collaborator
   const handleRemoveCollaborator = (name) => {
     setCollaborators(collaborators.filter((c) => c !== name));
   };
 
-  // Create Board with empty data
   const handleCreate = async (e) => {
     e.preventDefault();
 
-    // Check if user data is loaded
+    // ✅ FIX: Check userData directly (not userData.user)
     if (!userData || !userData._id) {
       setError("User data not loaded. Please refresh the page and try again.");
       console.error("User data is missing:", userData);
@@ -61,7 +57,7 @@ const CreateBoard = () => {
     try {
       const boardData = {
         name: boardName,
-        owner: userData._id,
+        owner: userData._id, // ✅ Now this will work correctly
         collaborators,
         description,
         data: {
@@ -75,7 +71,6 @@ const CreateBoard = () => {
       const res = await createBoard(boardData);
       console.log("Board created response:", res);
 
-      // Extract the board ID from response
       const newBoardId = res._id || res.data?._id || res.id;
       console.log("Extracted board ID:", newBoardId);
 
@@ -84,7 +79,6 @@ const CreateBoard = () => {
         throw new Error("Board created but no ID returned from server");
       }
 
-      // Navigate to the board page for editing
       const navigationPath = `/boardpage/${newBoardId}`;
       console.log("Navigating to:", navigationPath);
       navigate(navigationPath);
@@ -98,10 +92,8 @@ const CreateBoard = () => {
     }
   };
 
-  // Dark neon particles
   const particles = Array.from({ length: 25 }, (_, i) => i);
 
-  // Show loading state while user data is being fetched
   if (!userData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black">
@@ -146,7 +138,6 @@ const CreateBoard = () => {
             </div>
           )}
 
-          {/* Board Name */}
           <div>
             <label className="block text-sm font-medium text-purple-300 mb-1">
               Board Name
@@ -160,7 +151,6 @@ const CreateBoard = () => {
             />
           </div>
 
-          {/* Collaborators */}
           <div>
             <label className="block text-sm font-medium text-purple-300 mb-1">
               Collaborators
@@ -200,7 +190,6 @@ const CreateBoard = () => {
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-purple-300 mb-1">
               Description
@@ -213,7 +202,6 @@ const CreateBoard = () => {
             />
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading}

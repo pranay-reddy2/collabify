@@ -18,6 +18,8 @@ function useCurrentUser() {
 
         const result = await getCurrentUser();
         console.log("Current user:", result);
+
+        // ✅ FIX: Store only the user object, not the entire response
         dispatch(setUserData(result));
       } catch (error) {
         console.error("Error fetching user:", error);
