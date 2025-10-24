@@ -10,7 +10,7 @@ import http from "http";
 import { Server as IOServer } from "socket.io";
 import userRouter from "./routes/user.route.js";
 import jwt from "jsonwebtoken";
-
+import path from "path";
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 8000;
@@ -78,6 +78,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     msg: err.message || "Internal server error",
   });
+});
+
+const __dirname = path.resolve();
+app.use(express.static(path.join(__dirname, "build")));
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
 const httpServer = http.createServer(app);
