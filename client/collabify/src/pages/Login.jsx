@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login } from "../api/api.js";
 import { setUserData } from "../redux/userslice.js";
+import { Link } from "react-router-dom";
 
 const Login = () => {
   const [name, setName] = useState("");

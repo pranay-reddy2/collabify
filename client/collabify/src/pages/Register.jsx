@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { register } from "../api/api.js";
 import { setUserData } from "../redux/userslice.js";
+import { Link } from "react-router-dom";
 
 const Register = () => {
   const [name, setName] = useState("");
